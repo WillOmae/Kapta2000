@@ -1,5 +1,6 @@
 /*
- * Kapta2000.ino
+ * Kapta2000
+ * main.cpp
  *
  * Created: 8/20/2019 3:52:54 PM
  * Author: WILLOMAE
@@ -7,22 +8,22 @@
 #include <Arduino.h>
 #include <SPI.h>
 // values required for temperature measurement
-#define RTD_A		3.90830e-3		                        // Callendar-van-dusen constant A
-#define RTD_B		-5.7750e-7		                        // Callendar-van-dusen constant B
-#define RREF		4300.0			                        // Reference resistance 4xnominal
-#define RNOMINAL	1000.0			                        // RTD resistance at 0 degrees
-#define BOARD_RES	430				                        // Onboard resistance R7
-#define R1			220				                        // Resistance connected in parallel
-#define CS_PIN		53				                        // Slave select pin
-#define ADC_MAX		32768			                        // ADC is 15-bit, so max is 2^15
+#define RTD_A       3.90830e-3		                          // Callendar-van-dusen constant A
+#define RTD_B       -5.7750e-7		                          // Callendar-van-dusen constant B
+#define RREF        4300.0			                            // Reference resistance 4xnominal
+#define RNOMINAL    1000.0			                            // RTD resistance at 0 degrees
+#define BOARD_RES   430				                              // Onboard resistance R7
+#define R1          220				                              // Resistance connected in parallel
+#define CS_PIN      53				                              // Slave select pin
+#define ADC_MAX     32768			                              // ADC is 15-bit, so max is 2^15
 // values required for chlorine measurement
-#define CL_APIN		A0
+#define CL_APIN     A0
 #define CL_ADC_MIN	0
 #define CL_ADC_MAX	1023
 #define VOLT_MAX    4.4                                     // maximum measurable voltage 4-20mA output with 220 ohm res
-#define VOLT_MIN    1                                       // minimum measurable voltage 4-20mA output with 220 ohm res
-#define V_ZERO      0                                       // HOCL output voltage without chlorine in volts
-#define SENSITIVITY 5                                       // Cl sensor sensitivity in mV/mgL-1 -> ((VHOCL-VZERO)*1000)/[HOCL]
+#define VOLT_MIN    0.88                                    // minimum measurable voltage 4-20mA output with 220 ohm res
+#define V_ZERO      0.518                                   // HOCL output voltage without chlorine in volts
+#define SENSITIVITY 563                                     // Cl sensor sensitivity in mV/mgL-1 -> ((VHOCL-VZERO)*1000)/[HOCL]
 #define STEP_VOLT   (1 * (VOLT_MAX - VOLT_MIN) / 1023)
 // user defined functions
 uint8_t readByteReg (uint8_t);
