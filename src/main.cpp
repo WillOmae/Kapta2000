@@ -17,14 +17,13 @@
 #define CS_PIN      53				                              // Slave select pin
 #define ADC_MAX     32768			                              // ADC is 15-bit, so max is 2^15
 // values required for chlorine measurement
-#define CL_APIN     A0
-#define CL_ADC_MIN	0
-#define CL_ADC_MAX	1023
+#define CL_APIN     A0                                      // Analog pin to which chlorine sensor is attached
+#define CL_ADC_MIN	0                                       // 10-bit ADC minimum value
+#define CL_ADC_MAX	1023                                    // 10-bit ADC maximum value
 #define VOLT_MAX    4.4                                     // maximum measurable voltage 4-20mA output with 220 ohm res
 #define VOLT_MIN    0.88                                    // minimum measurable voltage 4-20mA output with 220 ohm res
 #define V_ZERO      0.518                                   // HOCL output voltage without chlorine in volts
 #define SENSITIVITY 563                                     // Cl sensor sensitivity in mV/mgL-1 -> ((VHOCL-VZERO)*1000)/[HOCL]
-#define STEP_VOLT   (1 * (VOLT_MAX - VOLT_MIN) / 1023)
 // user defined functions
 uint8_t readByteReg (uint8_t);
 uint16_t readWordReg (uint8_t);
@@ -33,7 +32,7 @@ void calcTemp (uint16_t);
 double callendarVanDussen (double);
 double adafruit (float);
 void dispFaults (uint8_t);
-int readChlorine (void);
+double readChlorine (void);
 
 SPISettings spiSettings (1000000, MSBFIRST, SPI_MODE1);
 
@@ -52,6 +51,10 @@ void loop()
     uint16_t hftReg = readWordReg (0x03);
     uint16_t lftReg = readWordReg (0x05);
     uint8_t statReg = readByteReg (0x07);
+    double concCl = readChlorine();
+    Serial.print ("The concentration of chlorine is ");
+    Serial.print (concCl, 8);
+    Serial.println (" ppm");
 
     if (0 == statReg)
     {
@@ -168,9 +171,20 @@ void dispFaults (uint8_t status)
         Serial.println ("Unknown fault, check connection");
     }
 }
-int readChlorine()
+double readChlorine()
 {
     int adc = analogRead (CL_APIN);
-    double v_hocl = adc * STEP_VOLT;
-    return ((v_hocl - V_ZERO) * 1000) / SENSITIVITY;
+    Serial.print ("Chlorine adc: ");
+    Serial.println (adc);
+    double v_hocl = adc * (VOLT_MAX - VOLT_MIN) / (CL_ADC_MAX - CL_ADC_MIN);
+    Serial.print ("Chlorine V_HOCL: ");
+    Serial.println (v_hocl, 3);
+    Serial.print ("Chlorine SENSITIVITY: ");
+    Serial.println (SENSITIVITY);
+    Serial.print ("Chlorine V_ZERO: ");
+    Serial.println (V_ZERO);
+    double concCl = ((v_hocl - V_ZERO) * 1000) / SENSITIVITY;
+    Serial.print ("Chlorine Concentration: ");
+    Serial.println (concCl, 3);
+    return concCl;
 }
