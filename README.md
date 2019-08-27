@@ -1,14 +1,17 @@
 # Kapta2000
-Arduino control of the Kapta2000 water chlorine and temperature sensor via an SPI interface.
-The KAPTA™ 2000-AC2 sensor solution has been specifically developed to measure active chlorine (HOCl) and temperature directly within a pressurised pipe. It works in both 0-5V mode and 4-20mA.
+## Summary
+Arduino control of the Kapta2000-AC2 water chlorine and temperature probe via an SPI interface.
+## Description
+The KAPTA™ 2000-AC2 sensor solution has been specifically developed to measure active chlorine (HOCl) and temperature directly within a pressurised pipe. It works in either of two modes: 0-5V and 4-20mA.
 ## Temperature measurement
-A MAX31865 RTD-To-Digital converter is used to interface the sensor to the arduino which is optimised for platinum RTDs.
-The sensor wires are connected to the MAX31865 as follows:
+A MAX31865 RTD-To-Digital converter is used to interface the probe to the arduino which is optimised for platinum RTDs.
+The probe wires are connected to the MAX31865 PMB as follows:
 * Yellow & Pink -> F<sup>+</sup> and F<sup>-</sup>
 * Green & Grey -> S<sup>+</sup> and S<sup>-</sup>
+
 This is a 4-wire configuration which allows for more accurate measurement.
 
-The capability of the MAX31865 is determined by the onboard resistor, in that an onboard 400Ω will support a PT100 RTD while an onboard 4000Ω a PT1000. In case a PT1000 RTD is to be used with a board having an onboard 400Ω resistor, a resistor can be connected in parallel to the RTD S<sup>+</sup> and S<sup>-</sup> wires to lower the resistance read by the board. Remember, `R = (R1 x R2) / (R1 + R2)`. This means that once the value of R has been read by the board, the value of the RTD can be calculated backwards.
+The capability of the MAX31865 is determined by the onboard resistor, in that an onboard 400Ω will support a PT100 RTD while an onboard 4000Ω a PT1000. In case a PT1000 RTD is to be used with a board having an onboard 400Ω resistor, a resistor can be connected in parallel to the RTD S<sup>+</sup> and S<sup>-</sup> wires to lower the resistance read by the board. Remember, `R = (R1 x R2) / (R1 + R2)`. This means that once the value of R has been read by the board, the value of the RTD can be calculated backwards, i.e. `R2 = (R1 x R) / (R1 - R)`.
 
 The MAX31865 has 8 8-bit registers that can be accessed by SPI: configuration, RTD MSBs, RTD LSBs, High fault threshold MSBs, High fault threshold LSBs, Low fault threshold MSBs, Low fault threshold LSBs and Fault Status.
 
@@ -18,7 +21,7 @@ Calculating the temperature from the resistance is easily calculated by use of t
 where
 * RTD_A = 3.90830e-3
 * RTD_B = -5.7750e-7
-* RNOMINAL = RTD resistance at 0<sup>0</sub>C
+* RNOMINAL = RTD resistance at 0<sup>0</sup>C
 
 The following steps are followed to read the temperature:
 * initialise SPI
@@ -56,3 +59,9 @@ where
 * V<sub>HOCl</sub> : HOCl output voltage (V)
 * V<sub>zero</sub> without chlorine : HOCl output voltage without chlorine (V)
 * S<sub>sensor</sub> : Sensitivity of the chlorine sensor (mV/mgL-1)
+
+## Sources
+* [Kapta2000 Chlorine Probe Datasheet](datasheets/KAPTA%202000-AC2.pdf)
+* [MAX31865 Datasheet](datasheets/MAX31865.pdf)
+* [MAX31865 Peripheral Module PMB Datasheet](datasheets/MAX31865PMB1%20Datasheet.pdf)
+* [RTD Interfacing and Linearization](datasheets/AN709_0.pdf)
