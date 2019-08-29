@@ -118,24 +118,11 @@ void calcTemp (uint16_t regVal)
     double x = callendarVanDussen (r2);
     Serial.print ("cvd: ");
     Serial.println (x);
-    double y = adafruit (adc2);
-    Serial.print ("adafruit: ");
-    Serial.println (y);
 }
 double callendarVanDussen (double rtd)
 {
-    return (-RTD_A + sqrt (RTD_A * RTD_A - 4 * RTD_B * (1 - (rtd / RNOMINAL)))) / (2 * RTD_B);
-}
-double adafruit (float adc)
-{
-    float Z1, Z2, Z3, Z4, Rt, temp;
-    Rt = (adc / ADC_MAX) * RREF;
-    Z1 = -RTD_A;
-    Z2 = RTD_A * RTD_A - (4 * RTD_B);
-    Z3 = (4 * RTD_B) / RNOMINAL;
-    Z4 = 2 * RTD_B;
-    temp = (sqrt (Z2 + (Z3 * Rt)) + Z1) / Z4;
-    return temp >= 0 ? temp : -1000000.0;
+    double tmp = (-RTD_A + sqrt (RTD_A * RTD_A - 4 * RTD_B * (1 - (rtd / RNOMINAL)))) / (2 * RTD_B);
+    return tmp >= 0 ? tmp : -1000000.0;
 }
 void dispFaults (uint8_t status)
 {
