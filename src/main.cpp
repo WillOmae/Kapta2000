@@ -8,28 +8,28 @@
 #include <Arduino.h>
 #include <SPI.h>
 // values required for temperature measurement
-#define RTD_A       3.90830e-3		                          // Callendar-van-dusen constant A
-#define RTD_B       -5.7750e-7		                          // Callendar-van-dusen constant B
-#define RREF        4300.0			                            // Reference resistance 4xnominal
-#define RNOMINAL    1000.0			                            // RTD resistance at 0 degrees
-#define BOARD_RES   430				                              // Onboard resistance R7
-#define R1          220				                              // Resistance connected in parallel
-#define CS_PIN      53				                              // Slave select pin
-#define ADC_MAX     32768			                              // ADC is 15-bit, so max is 2^15
+#define RTD_A       3.90830e-3              // Callendar-van-dusen constant A
+#define RTD_B       -5.7750e-7		        // Callendar-van-dusen constant B
+#define RREF        4300.0			        // Reference resistance 4xnominal
+#define RNOMINAL    1000.0			        // RTD resistance at 0 degrees
+#define BOARD_RES   430				        // Onboard resistance R7
+#define R1          220				        // Resistance connected in parallel
+#define CS_PIN      53				        // Slave select pin
+#define ADC_MAX     32768			        // ADC is 15-bit, so max is 2^15
 // values required for chlorine measurement
-#define CL_APIN     A0                                      // Analog pin to which chlorine sensor is attached
-#define CL_ADC_MIN	0                                       // 10-bit ADC minimum value
-#define CL_ADC_MAX	1023                                    // 10-bit ADC maximum value
-#define VOLT_MAX    4.4                                     // maximum measurable voltage 4-20mA output with 220 ohm res
-#define VOLT_MIN    0.88                                    // minimum measurable voltage 4-20mA output with 220 ohm res
-#define V_ZERO      0.518                                   // HOCL output voltage without chlorine in volts
-#define SENSITIVITY 563                                     // Cl sensor sensitivity in mV/mgL-1 -> ((VHOCL-VZERO)*1000)/[HOCL]
-#define RES420MA    250
+#define CL_APIN     A0                      // Analog pin to which chlorine sensor is attached
+#define CL_ADC_MIN	0                       // 10-bit ADC minimum value
+#define CL_ADC_MAX	1023                    // 10-bit ADC maximum value
+#define RES420MA    220                     // Resistor used for 4-20mA measurement
+#define VOLT_MAX    4.4                     // maximum measurable 4-20mA output voltage with RES420MA
+#define VOLT_MIN    0.88                    // minimum measurable 4-20mA output voltage with RES420MA
+#define V_ZERO      0.518                   // HOCL output voltage without chlorine in volts
+#define SENSITIVITY 563                     // Cl sensor sensitivity in mV/mgL-1
 // user defined functions
 uint8_t readByteReg (uint8_t);
 uint16_t readWordReg (uint8_t);
 void writeConfig (void);
-void calcTemp (uint16_t);
+double calcTemp (void);
 double callendarVanDussen (double);
 double adafruit (float);
 void dispFaults (uint8_t);
@@ -48,24 +48,8 @@ void setup()
 }
 void loop()
 {
-    uint16_t rtdReg = readWordReg (0x01);
-    uint16_t hftReg = readWordReg (0x03);
-    uint16_t lftReg = readWordReg (0x05);
-    uint8_t statReg = readByteReg (0x07);
+    double tmp = calcTemp ();
     double concCl = readChlorine();
-    Serial.print ("The concentration of chlorine is ");
-    Serial.print (concCl, 8);
-    Serial.println (" ppm");
-
-    if (0 == statReg)
-    {
-        calcTemp (rtdReg);
-    }
-    else
-    {
-        dispFaults (statReg);
-    }
-
     Serial.println ();
     delay (5000);
 }
@@ -101,23 +85,40 @@ void writeConfig()
     digitalWrite (CS_PIN, HIGH);
     SPI.endTransaction ();
 }
-void calcTemp (uint16_t regVal)
+double calcTemp ()
 {
-    double adc1 = regVal;
-    Serial.print ("adc1: ");
-    Serial.println (adc1);
-    double rt = adc1 * BOARD_RES / ADC_MAX;
-    Serial.print ("rt: ");
-    Serial.println (rt);
-    double r2 = (R1 * rt) / (R1 - rt);
-    Serial.print ("R2: ");
-    Serial.println (r2);
-    double adc2 = (r2 * ADC_MAX) / RREF;
-    Serial.print ("adc2: ");
-    Serial.println (adc2);
-    double x = callendarVanDussen (r2);
-    Serial.print ("cvd: ");
-    Serial.println (x);
+    uint16_t rtdReg = readWordReg (0x01);
+    uint16_t hftReg = readWordReg (0x03);
+    uint16_t lftReg = readWordReg (0x05);
+    uint8_t statReg = readByteReg (0x07);
+
+    if (0 == statReg)
+    {
+        double adc1 = rtdReg;
+        Serial.print ("A1:");
+        Serial.print (adc1, 3);
+        double rt = adc1 * BOARD_RES / ADC_MAX;
+        Serial.print ("\tRt:");
+        Serial.print (rt, 3);
+        Serial.print ("Ω");
+        double r2 = (R1 * rt) / (R1 - rt);
+        Serial.print ("\tR2:");
+        Serial.print (r2, 3);
+        Serial.print ("Ω");
+        double adc2 = (r2 * ADC_MAX) / RREF;
+        Serial.print ("\tA2:");
+        Serial.print (adc2, 3);
+        double tmp = callendarVanDussen (r2);
+        Serial.print ("\tT:");
+        Serial.print (tmp, 3);
+        Serial.print ("°C");
+        return tmp;
+    }
+    else
+    {
+        dispFaults (statReg);
+        return -1000000.0;
+    }
 }
 double callendarVanDussen (double rtd)
 {
@@ -130,34 +131,13 @@ void dispFaults (uint8_t status)
     Serial.print (status);
     Serial.print (" ");
 
-    if (0x80 & status)
-    {
-        Serial.println ("RTD High Threshold Met");
-    }
-    else if (0x40 & status)
-    {
-        Serial.println ("RTD Low Threshold Met");
-    }
-    else if (0x20 & status)
-    {
-        Serial.println ("REFin- > 0.85 x Vbias");
-    }
-    else if (0x10 & status)
-    {
-        Serial.println ("FORCE- open");
-    }
-    else if (0x08 & status)
-    {
-        Serial.println ("FORCE- open");
-    }
-    else if (0x04 & status)
-    {
-        Serial.println ("Over/Under voltage fault");
-    }
-    else
-    {
-        Serial.println ("Unknown fault, check connection");
-    }
+    if (0x80 & status) Serial.println ("RTD High Threshold Met");
+    else if (0x40 & status) Serial.println ("RTD Low Threshold Met");
+    else if (0x20 & status) Serial.println ("REFin- > 0.85 x Vbias");
+    else if (0x10 & status) Serial.println ("FORCE- open");
+    else if (0x08 & status) Serial.println ("FORCE- open");
+    else if (0x04 & status) Serial.println ("Over/Under voltage fault");
+    else Serial.println ("Unknown fault, check connection");
 }
 double readChlorine()
 {
