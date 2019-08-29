@@ -24,6 +24,7 @@
 #define VOLT_MIN    0.88                                    // minimum measurable voltage 4-20mA output with 220 ohm res
 #define V_ZERO      0.518                                   // HOCL output voltage without chlorine in volts
 #define SENSITIVITY 563                                     // Cl sensor sensitivity in mV/mgL-1 -> ((VHOCL-VZERO)*1000)/[HOCL]
+#define RES420MA    250
 // user defined functions
 uint8_t readByteReg (uint8_t);
 uint16_t readWordReg (uint8_t);
@@ -173,18 +174,75 @@ void dispFaults (uint8_t status)
 }
 double readChlorine()
 {
-    int adc = analogRead (CL_APIN);
-    Serial.print ("Chlorine adc: ");
-    Serial.println (adc);
-    double v_hocl = adc * (VOLT_MAX - VOLT_MIN) / (CL_ADC_MAX - CL_ADC_MIN);
-    Serial.print ("Chlorine V_HOCL: ");
-    Serial.println (v_hocl, 3);
-    Serial.print ("Chlorine SENSITIVITY: ");
-    Serial.println (SENSITIVITY);
-    Serial.print ("Chlorine V_ZERO: ");
-    Serial.println (V_ZERO);
-    double concCl = ((v_hocl - V_ZERO) * 1000) / SENSITIVITY;
-    Serial.print ("Chlorine Concentration: ");
-    Serial.println (concCl, 3);
-    return concCl;
+    double adc = readAnalogInput();
+    double volt = calcVoltage (adc);
+    double amp = calcCurrent (volt);
+    double conc = calcChlorine (volt);
+    Serial.print ("A:");
+    Serial.println (adc, 3);
+    Serial.print ("\tV:");
+    Serial.print (volt, 3);
+    Serial.print ("V");
+    Serial.print ("\tZ:");
+    Serial.print (V_ZERO, 3);
+    Serial.print ("V");
+    Serial.print ("\tA:");
+    Serial.print (amp, 3);
+    Serial.print ("A");
+    Serial.print ("\tS:");
+    Serial.print (SENSITIVITY, 3);
+    Serial.print ("mV/mgL-1");
+    Serial.print ("\tC:");
+    Serial.print (conc, 3);
+    Serial.print ("ppm");
+    return conc; // return HOCL concentration in ppm or mg/L
+}
+double readAnalogInput()
+{
+    int buf[10], temp;
+
+    for (int i = 0; i < 10; i++)
+    {
+        buf[i] = analogRead (CL_APIN);
+        delay (10);
+    }
+
+    // bubble sort algorithm
+    for (int i = 0; i < 9; i++)
+    {
+        for (int j = i + 1; j < 10; j++)
+        {
+            if (buf[i] > buf[j])
+            {
+                temp = buf[i];
+                buf[i] = buf[j];
+                buf[j] = temp;
+            }
+        }
+    }
+
+    double avgValue = 0;
+
+    for (int i = 2; i < 8; i++)
+    {
+        avgValue += buf[i];
+    }
+
+    avgValue /= 6;
+    return avgValue; // return the average of 10 analog readings without outliers
+}
+double calcVoltage (double adc)
+{
+    double volt = (double)adc * (VOLT_MAX - VOLT_MIN) / (CL_ADC_MAX - CL_ADC_MIN);
+    int temp = volt * 100;
+    volt = (double)temp / 100;
+    return volt; // return HOCL output voltage in V
+}
+double calcCurrent (double volt)
+{
+    return (volt / RES420MA) * 1000; // return current in mA
+}
+double calcChlorine (double volt)
+{
+    return ((volt - V_ZERO) * 1000) / SENSITIVITY; // return chlorine concentration in ppm or mg/L
 }
