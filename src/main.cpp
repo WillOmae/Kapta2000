@@ -34,6 +34,10 @@ double callendarVanDussen (double);
 double adafruit (float);
 void dispFaults (uint8_t);
 double readChlorine (void);
+double readAnalogInput (void);
+double calcVoltage (double);
+double calcCurrent (double);
+double calcChlorine (double);
 
 SPISettings spiSettings (1000000, MSBFIRST, SPI_MODE1);
 
