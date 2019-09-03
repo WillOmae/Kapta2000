@@ -10,9 +10,9 @@
 // values required for temperature measurement
 #define RTD_A       3.90830e-3              // Callendar-van-dusen constant A
 #define RTD_B       -5.7750e-7		        // Callendar-van-dusen constant B
-#define RREF        4300.0			        // Reference resistance 4xnominal
+#define RREF        4280.0			        // Reference resistance 4xnominal
 #define RNOMINAL    1000.0			        // RTD resistance at 0 degrees
-#define BOARD_RES   430				        // Onboard resistance R7
+#define BOARD_RES   428				        // Onboard resistance R7
 #define R1          220				        // Resistance connected in parallel
 #define CS_PIN      53				        // Slave select pin
 #define ADC_MAX     32768			        // ADC is 15-bit, so max is 2^15
@@ -20,9 +20,9 @@
 #define CL_APIN     A0                      // Analog pin to which chlorine sensor is attached
 #define CL_ADC_MIN	0                       // 10-bit ADC minimum value
 #define CL_ADC_MAX	1023                    // 10-bit ADC maximum value
-#define RES420MA    220                     // Resistor used for 4-20mA measurement
-#define VOLT_MAX    4.4                     // maximum measurable 4-20mA output voltage with RES420MA
-#define VOLT_MIN    0.88                    // minimum measurable 4-20mA output voltage with RES420MA
+#define RES420MA    250                     // Resistor used for 4-20mA measurement
+#define VOLT_MAX    5.0                     // maximum measurable 4-20mA output voltage with RES420MA
+#define VOLT_MIN    0.00                    // minimum measurable 4-20mA output voltage with RES420MA
 #define V_ZERO      0.518                   // HOCL output voltage without chlorine in volts
 #define SENSITIVITY 563                     // Cl sensor sensitivity in mV/mgL-1
 // user defined functions
@@ -40,6 +40,7 @@ double calcCurrent (double);
 double calcChlorine (double);
 
 SPISettings spiSettings (1000000, MSBFIRST, SPI_MODE1);
+float loopCount = 0.0;
 
 void setup()
 {
@@ -52,9 +53,11 @@ void setup()
 }
 void loop()
 {
+    Serial.println (loopCount);
     double tmp = calcTemp ();
     double concCl = readChlorine();
     Serial.println ();
+    loopCount += 0.01;
     delay (5000);
 }
 uint8_t readByteReg (uint8_t reg)
@@ -85,7 +88,7 @@ void writeConfig()
     SPI.beginTransaction (spiSettings);
     digitalWrite (CS_PIN, LOW);
     SPI.transfer (0x80);
-    SPI.transfer (0xC2);
+    SPI.transfer (0b11000010);
     digitalWrite (CS_PIN, HIGH);
     SPI.endTransaction ();
 }
@@ -115,7 +118,7 @@ double calcTemp ()
         double tmp = callendarVanDussen (r2);
         Serial.print ("\tT:");
         Serial.print (tmp, 3);
-        Serial.print ("°C");
+        Serial.println ("°C");
         return tmp;
     }
     else
@@ -150,8 +153,8 @@ double readChlorine()
     double amp = calcCurrent (volt);
     double conc = calcChlorine (volt);
     Serial.print ("A:");
-    Serial.println (adc, 3);
-    Serial.print ("\tV:");
+    Serial.print (adc, 3);
+    Serial.print ("\t\tV:");
     Serial.print (volt, 3);
     Serial.print ("V");
     Serial.print ("\tZ:");
@@ -161,7 +164,7 @@ double readChlorine()
     Serial.print (amp, 3);
     Serial.print ("A");
     Serial.print ("\tS:");
-    Serial.print (SENSITIVITY, 3);
+    Serial.print (SENSITIVITY);
     Serial.print ("mV/mgL-1");
     Serial.print ("\tC:");
     Serial.print (conc, 3);
@@ -170,18 +173,18 @@ double readChlorine()
 }
 double readAnalogInput()
 {
-    int buf[10], temp;
+    int buf[20], temp;
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 20; i++)
     {
         buf[i] = analogRead (CL_APIN);
-        delay (10);
+        //delay (10);
     }
 
     // bubble sort algorithm
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < 19; i++)
     {
-        for (int j = i + 1; j < 10; j++)
+        for (int j = i + 1; j < 20; j++)
         {
             if (buf[i] > buf[j])
             {
@@ -194,12 +197,12 @@ double readAnalogInput()
 
     double avgValue = 0;
 
-    for (int i = 2; i < 8; i++)
+    for (int i = 4; i < 16; i++)
     {
         avgValue += buf[i];
     }
 
-    avgValue /= 6;
+    avgValue /= 12;
     return avgValue; // return the average of 10 analog readings without outliers
 }
 double calcVoltage (double adc)
